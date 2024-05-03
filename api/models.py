@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Q, F
+
 
 class Vendor(models.Model):
     name = models.CharField(max_length=255)
@@ -34,7 +35,14 @@ class Vendor(models.Model):
         ).annotate(
             response_time=F('acknowledgment_date') - F('issue_date')
         ).values_list('response_time', flat=True)
-        self.average_response_time = sum(response_times, timezone.timedelta()) / len(response_times) if response_times else timezone.timedelta()
+        
+        if response_times:
+            total_seconds = sum(rt.total_seconds() for rt in response_times)
+            avg_seconds = total_seconds / len(response_times)
+            self.average_response_time = avg_seconds
+        else:
+            self.average_response_time = 0.0
+        
         self.save()
 
     def update_fulfillment_rate(self):
